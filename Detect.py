@@ -217,7 +217,7 @@ def deal(inputname,outputname):
 
     VPoints = removeSame(VPoints)
     voteForPoint(lines2)
-    votes2 = sorted(votes.iteritems(),key=lambda votes:votes[1],reverse=True)
+    votes2 = sorted(votes.items(),key=lambda votes:votes[1],reverse=True)
     lenofvotes = min(len(votes2),max(5,int(len(votes2) * 0.2)))
     votesFinal = {}
     VPoints = []

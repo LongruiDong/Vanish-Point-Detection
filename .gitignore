@@ -1,4 +1,11 @@
 *.png
 *.pyc
+__pycache__
 test.py
 /.vscode
+/kitti
+/kt360
+/kt360f
+/poss
+/robotcar
+

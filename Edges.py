@@ -6,22 +6,25 @@ import math
 eps = 1e-7
 
 def getEdges(image):
-    blur = cv.bilateralFilter(image,9,75,75)
-    gray = cv.cvtColor(blur,cv.COLOR_BGR2GRAY)
+    blur = cv.bilateralFilter(image,9,75,75) # 滤波器降噪
+    gray = cv.cvtColor(blur,cv.COLOR_BGR2GRAY) # 转灰度图
     #blur2 = cv.GaussianBlur(gray,(5,5),0)
-    edges = cv.Canny(gray,50,200,apertureSize = 3)
+    edges = cv.Canny(gray,50,200,apertureSize = 3) #使用canny边缘检测检测出图片边缘
     return edges
 
 def getLines(edges,minlength = 30):
-    lines = cv.HoughLinesP(edges,1,np.pi/180,80,20,10)
+    lines = cv.HoughLinesP(edges,1,np.pi/180,80,20,10) #概率霍夫变换检测直线
     count = 0
     ret = []
+    if lines is None: #增加异常情况
+        print('None Houghlines, return []')
+        return ret
     for t in lines:
         x1 = t[0][0]
         x2 = t[0][2]
         y1 = t[0][1]
         y2 = t[0][3]
-        if (x2 - x1) ** 2 + (y2 - y1) ** 2 <= minlength ** 2:
+        if (x2 - x1) ** 2 + (y2 - y1) ** 2 <= minlength ** 2: #最短直线长度，小于它不计入
             count += 1
             continue
         ret.append((x1,y1,x2,y2))
@@ -106,6 +109,7 @@ def extenLine(line,edges):
     rety1 = nowy
     return [retx1,int(rety1),retx2,int(rety2)]
 
+#4 对直线片段尽可能扩展到最长的线段
 def extenLines(lines,edges):
     ret = []
     for line in lines:
@@ -127,10 +131,10 @@ def getLineABC(line):
         y1 = tmp
     
     c = 1
-    if y1 * x2 == y2 * x1:
+    if y1 * x2 == y2 * x1: #原点在该直线上
         c = 0
         b = 1.0
-        a = -(b * y2 + c) / x2
+        a = -(b * y2 + c) / x2 # 斜率
         return a,b,c
     b = float(x1 - x2) / (y1*x2 - y2*x1)
     a = -(b * y2 + c) / x2
@@ -149,17 +153,18 @@ def getCirAnch(a,b):
     else:
         return math.atan(a/(-b))
 
+# 对线段排序 按照斜率 升序排列？
 def sortLines(lines):
-    tmp = {}
+    tmp = {} #字典
     for line in lines:
         index = (line[0],line[1],line[2],line[3])
-        a,b,c, = getLineABC(line)
-        data = getCirAnch(a,b)
+        a,b,c, = getLineABC(line) # 两点求直线方程 ax+by+c=0
+        data = getCirAnch(a,b) # 求斜率 弧度！
         tmp[index] = data
-    tmp = sorted(tmp.iteritems(),key=lambda tmp:tmp[1],reverse=False)
+    tmp = sorted(tmp.items(),key=lambda tmp:tmp[1],reverse=False)#按斜率弧度升序 .items()
     ret = []
     for item in tmp:
-        ret.append([item[0][0],item[0][1],item[0][2],item[0][3],item[1]])
+        ret.append([item[0][0],item[0][1],item[0][2],item[0][3],item[1]]) #第5维是斜率的弧度 含正负
     return ret
 
 def disPoint2Line(point,line):
@@ -191,6 +196,7 @@ def disPoint2Line(point,line):
 def inLine(point,line,gap = 1):
     return disPoint2Line(point,line) <= gap
 
+# 判断两线段是否很接近
 def shouldMerge(line1,line2):
     k1 = line1[4]
     k2 = line2[4]
@@ -222,9 +228,9 @@ def merge2Line(line1,line2):
             rtP[1] = point[1]
     return (lbP[0],lbP[1],rtP[0],rtP[1],k)
 
-
+#5：将非常接近的线段合并为一条线段 使用了层次聚类？
 def mergeLines(lines):
-    lines = sortLines(lines)
+    lines = sortLines(lines) # 按斜率排序
     tmp = []
     used = []
     ret = []

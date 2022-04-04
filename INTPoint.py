@@ -5,43 +5,46 @@ import math
 import Edges
 eps = 1e-7
 
-
+# 计算给定两条线交点
 def getIntersectPoint(linea,lineb):
     a1,b1,c1 = Edges.getLineABC(linea)
     a2,b2,c2 = Edges.getLineABC(lineb)
     if a2 != 0 and b2 != 0:
         if abs(a1/a2 - b1/b2) <= eps:
-            return ('p',a2/b2)
+            return ('p',a2/b2)#斜率一样 p表示 平行
     else:
         if a2 == 0 and b2 == 0:
             pass
         if a1 == 0 and a2 == 0:
-            return ('h','h')
+            return ('h','h') # 两条 都是 h 水平的
         if b1 == 0 and b2 == 0:
-            return ('v','v')
+            return ('v','v') # 两条都是 v 竖直的 即平行于图像y轴
 #    if abs(Edges.getCirAnch(a1,b1) - Edges.getCirAnch(a2,b2)) <= 0.03:
 #        return ('n','n')
     try:
         y = (1 - float(a2)/a1) / ((b1 * float(a2) / a1) - b2)
         x = (-y * b1 - 1) / a1
-    except:
+    except: # a1为0时 交点不存在 none
+        return('n','n') #
+    if math.isnan(y) or math.isnan(x): #上面会出现漏判。。 所以再判断
         return('n','n')
-    return (int(x),int(y))
+    return (int(x),int(y)) #ValueError: cannot convert float NaN to integer
 
+# 计算若干线段的交点
 def getVPoints2(lines,arange = 0.2617):
     l = 0
     r = 0
     ret = []
-    for i in range(0,len(lines),1):
+    for i in range(0,len(lines),1): #遍历每个线段 得到i斜率左右各arange内的线段
         while (lines[r][4] - lines[i][4] <= arange and r < len(lines) - 1):
             r += 1
         while (lines[i][4] - lines[l][4] >= arange):
             l += 1
-        for j in range(l,r,1):
+        for j in range(l,r,1):# j弧度 在 [i-arange.i+arange]
             if j == i:
                 continue
-            ret.append(getIntersectPoint(lines[i],lines[j]))
-    ret = removeSame(ret)
+            ret.append(getIntersectPoint(lines[i],lines[j]))#计算两条线交点
+    ret = removeSame(ret)# 去除重复 和 n n 但 h h or v v 会保存一个
     return ret
 
 def removeSame(list):
@@ -52,7 +55,8 @@ def removeSame(list):
         if item[0] == 'n':
             flag = True
         tmp = (item[0],item[1])
-        if dic.has_key(tmp):
+        # if dic.has_key(tmp):
+        if tmp in dic:
             continue
         dic[tmp] = 1
         ret.append(tmp)
@@ -84,6 +88,7 @@ def getArch(line,point):
     arch = math.acos(cos)
     return arch
 
+# 7:每个线对每个候选交点投票
 def voteForPoint(lines,VPoints):
     votes = {}
     voters = {}
@@ -92,10 +97,10 @@ def voteForPoint(lines,VPoints):
         voters[p] = 0
     for line in lines:
         a,b,c = Edges.getLineABC(line)
-        lens = getLinesLength(line)
+        lens = getLinesLength(line) #线段长度
         for p in VPoints:
             fakep = p
-            if p[0] == 'h':
+            if p[0] == 'h': # 来自两个水平线
                 if a == 0:
                     votes[p] += lens
                     voters[p] += 1
@@ -109,7 +114,7 @@ def voteForPoint(lines,VPoints):
                     continue
                 else:
                     fakep = (line[0],1000000)
-            if p[0] == 'p':
+            if p[0] == 'p': # 来自两平行 但非 水平 or 竖直
                 if b == 0:
                     continue
                 if abs(a/b-p[1]) < eps:
@@ -121,7 +126,7 @@ def voteForPoint(lines,VPoints):
             arch = getArch(line,fakep)
             if arch >= math.pi/18:
                 continue
-            votes[p] += lens * math.exp(-( arch / ( 2 * (0.1 ** 2 ) ) ) )
+            votes[p] += lens * math.exp(-( arch / ( 2 * (0.1 ** 2 ) ) ) )#夹角越大 分低
             voters[p] += 1
 #    for item in votes:
 #        if voters[item] <= 4:
